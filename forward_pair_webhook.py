@@ -1,3 +1,4 @@
+# file: forward_pair_webhook.py
 import os
 import json
 import logging
@@ -35,6 +36,7 @@ def _ensure_dir(path: str):
         os.makedirs(d, exist_ok=True)
 
 async def load_pairs():
+    """Загружаем пары из JSON на старте."""
     global _pairs
     if not os.path.exists(PAIRS_FILE):
         _pairs = {}
@@ -48,6 +50,7 @@ async def load_pairs():
         _pairs = {}
 
 async def save_pairs():
+    """Сохраняем пары в JSON после изменений."""
     try:
         async with _pairs_lock:
             _ensure_dir(PAIRS_FILE)
@@ -93,7 +96,8 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if partner:
         msg += f"\n✅ Уже связан с: <code>{partner}</code>\nНапиши любое сообщение — я отправлю его партнёру."
     else:
-        msg += "\nСвязи пока нет. Сделай /link <ID> — и поехали."
+        # ВАЖНО: угловые скобки экранированы, чтобы не ломать HTML
+        msg += "\nСвязи пока нет. Сделай /link &lt;ID&gt; — и поехали."
     await update.message.reply_html(msg)
 
 async def myid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -114,14 +118,17 @@ async def link_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Нельзя связать самого себя 🙂")
         return
 
-    # Ставим связь в обе стороны, старую при этом заменяем
+    # Устанавливаем связь в обе стороны (предыдущие связи перезаписываются)
     await set_pair(cid, other)
 
-    # Пытаемся уведомить вторую сторону (молча игнорируем, если бот не добавлен)
+    # Уведомляем вторую сторону (если бот уже в ЛС у неё)
     try:
-        await context.bot.send_message(other, f"🔗 Вас связали с аккаунтом <code>{cid}</code>.\n"
-                                              f"Теперь сообщения будут пересылаться автоматически.",
-                                       parse_mode="HTML")
+        await context.bot.send_message(
+            other,
+            f"🔗 Вас связали с аккаунтом <code>{cid}</code>.\n"
+            f"Теперь сообщения будут пересылаться автоматически.",
+            parse_mode="HTML"
+        )
     except Exception:
         pass
 
@@ -147,7 +154,7 @@ async def relay_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.effective_message
     chat = update.effective_chat
 
-    # Только личные чаты; игнорируем любые сообщения от ботов (вкл. нас самих)
+    # Только личные чаты; игнорируем ботов (включая нас самих)
     if chat.type != "private":
         return
     if msg.from_user and msg.from_user.is_bot:
@@ -158,6 +165,7 @@ async def relay_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
+        # copy_message сохраняет тип контента и форматирование
         await context.bot.copy_message(
             chat_id=partner,
             from_chat_id=chat.id,
@@ -182,7 +190,7 @@ async def on_startup():
     await tg_app.bot.set_webhook(
         url=url,
         secret_token=WEBHOOK_SECRET_TOKEN,
-        allowed_updates=["message","edited_message"],
+        allowed_updates=["message", "edited_message"],
         drop_pending_updates=True
     )
     await tg_app.initialize()
@@ -196,6 +204,7 @@ async def on_shutdown():
 
 @app.post(f"/webhook/{WEBHOOK_SECRET_TOKEN}")
 async def telegram_webhook(req: Request):
+    # Проверяем секрет Telegram → наш WEBHOOK_SECRET_TOKEN
     if req.headers.get("x-telegram-bot-api-secret-token") != WEBHOOK_SECRET_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid secret token")
     data = await req.json()
@@ -206,4 +215,5 @@ async def telegram_webhook(req: Request):
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+
 
