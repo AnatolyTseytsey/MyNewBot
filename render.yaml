@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: tg-forward-bot
+    env: docker
+    autoDeploy: true
+    plan: starter
+    healthCheckPath: /healthz
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: TARGET_CHAT_ID
+        sync: false
+      - key: SOURCE_CHAT_ID
+        sync: false
+      - key: WEBHOOK_SECRET_TOKEN
+        generateValue: true
+      - key: APP_BASE_URL
+        sync: false
