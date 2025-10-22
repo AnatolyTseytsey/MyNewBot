@@ -8,11 +8,9 @@ services:
     envVars:
       - key: BOT_TOKEN
         sync: false
-      - key: TARGET_CHAT_ID
-        sync: false
-      - key: SOURCE_CHAT_ID
-        sync: false
       - key: WEBHOOK_SECRET_TOKEN
         generateValue: true
       - key: APP_BASE_URL
         sync: false
+      - key: PAIRS_FILE
+        value: pairs.json
