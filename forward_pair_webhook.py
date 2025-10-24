@@ -84,9 +84,9 @@ HELP_TEXT = (
     "Команды:\n"
     "/myid — показать твой ID\n"
     "/link &lt;ID&gt; — связать с другим аккаунтом (вставь его ID)\n"
+    "/checklink — показать текущую связь\n"
     "/unlink — разорвать связь\n\n"
-    "Пример: <code>/link 123456789</code>\n"
-    "Подсказка: отправь этот ID второму аккаунту, он сделает /link {cid} — и вы будете связаны.\n"
+    "Подсказка: Отправь /link <code>{cid}</code> — и вы будете связаны.\n"
 )
 
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -96,13 +96,24 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if partner:
         msg += f"\n✅ Уже связан с: <code>{partner}</code>\nНапиши любое сообщение — я отправлю его партнёру."
     else:
-        # ВАЖНО: угловые скобки экранированы, чтобы не ломать HTML
         msg += "\nСвязи пока нет. Сделай /link &lt;ID&gt; — и поехали."
     await update.message.reply_html(msg)
 
 async def myid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cid = update.effective_chat.id
     await update.message.reply_html(f"Твой ID: <code>{cid}</code>")
+
+async def checklink_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    cid = update.effective_chat.id
+    partner = await get_partner(cid)
+    if partner:
+        await update.message.reply_html(f"Связь установлена с: <code>{partner}</code>")
+    else:
+        await update.message.reply_html(
+            "Связь не установлена.\n"
+            "Связи пока нет. Сделай /link &lt;ID&gt; — и поехали.\n"
+            f"Твой ID: <code>{cid}</code>"
+        )
 
 async def link_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cid = update.effective_chat.id
@@ -162,6 +173,11 @@ async def relay_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     partner = await get_partner(chat.id)
     if not partner:
+        # Нет связи — сообщаем пользователю и подсказываем его ID
+        await msg.reply_html(
+            "Связи пока нет. Сделай /link &lt;ID&gt; — и поехали.\n"
+            f"Твой ID: <code>{chat.id}</code>"
+        )
         return
 
     try:
@@ -178,6 +194,7 @@ async def relay_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # === PTB handlers ===
 tg_app.add_handler(CommandHandler("start", start_cmd))
 tg_app.add_handler(CommandHandler("myid", myid_cmd))
+tg_app.add_handler(CommandHandler("checklink", checklink_cmd))
 tg_app.add_handler(CommandHandler("link", link_cmd))
 tg_app.add_handler(CommandHandler("unlink", unlink_cmd))
 tg_app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, relay_messages))
