@@ -3,8 +3,11 @@ services:
     name: tg-forward-bot
     env: docker
     autoDeploy: true
-    plan: starter
     healthCheckPath: /healthz
+    disks:
+      - name: data
+        mountPath: /data
+        sizeGB: 1
     envVars:
       - key: BOT_TOKEN
         sync: false
@@ -13,4 +16,4 @@ services:
       - key: APP_BASE_URL
         sync: false
       - key: PAIRS_FILE
-        value: pairs.json
+        value: /data/pairs.json
